@@ -7,6 +7,7 @@ import main
 import numpy as np
 from os import listdir
 from os.path import isfile, join
+from PIL import Image
 import random
 
 class Menu:
@@ -40,15 +41,33 @@ class Menu:
         self.root.geometry(f'{window_width}x{window_height}+{centerX}+{centerY}')
 
         #mozliwosc zmiany rozmiaru
-        self.root.resizable(True, True)
+        # self.root.resizable(True, True)
+        self.root.configure(background='black')
+
+        style = ttk.Style()
+        style.configure("First", background="black")
+
+        style = ttk.Style()
+        style.configure("BW.TLabel", background="black")
+
+        ttk.Button(text="Test", style="BW.TLabel").pack()
+        ttk.Label(text="Test", style="BW.TLabel").pack()
 
         #widgety
-        ttk.Label(self.root, text='Welcome to Pac-Man!').pack()
-        ttk.Button(self.root, text='Play!', command=self.start).pack()
-        ttk.Button(self.root, text='Create new board!', command=self.runNewGenerator).pack()
-        ttk.Button(self.root, text='Load draft board!', command=self.runDraftGenerator).pack()
-        ttk.Button(self.root, text='Exit', command=exit).pack()  
+        welcome=tk.PhotoImage(file="graphics/pngFiles/writing/welcome.png")
+        ttk.Label(self.root, image=welcome, style="BW.TLabel").place(x=window_width/2-304, y=50)
+        play = tk.PhotoImage(file="graphics/pngFiles/writing/play.png")
+        ttk.Button(self.root,  image=play ,command=self.start, style="BW.TLabel").place(x=window_width/2-45, y=150)
+        createNewBoard=tk.PhotoImage(file="graphics/pngFiles/writing/createNewBoard.png")
+        ttk.Button(self.root, image=createNewBoard, command=self.runNewGenerator,  style="BW.TLabel").place(x=window_width/2-170,y=225)
+        loadDraftBoard=tk.PhotoImage(file="graphics/pngFiles/writing/loadDraftBoard.png")
+        ttk.Button(self.root, image=loadDraftBoard, command=self.runDraftGenerator, style="BW.TLabel").place(x=window_width/2-168, y=300)
+        statisticsText=tk.PhotoImage(file="graphics/pngFiles/writing/statistics.png")
+        ttk.Button(self.root, image=statisticsText, command=self.statistics, style="BW.TLabel").place(x=window_width/2-112, y=375)
 
+        exitText=tk.PhotoImage(file="graphics/pngFiles/writing/exit.png")
+        ttk.Button(self.root, image=exitText, command=exit, style="BW.TLabel").place(x=window_width/2-63, y=450)  
+        
         self.root.mainloop()
 
 
@@ -128,7 +147,6 @@ class Menu:
         #losowo wybieram mape
         x=random.choice(generator)
         # subroot.destroy()
-        print("./maps/"+x)
         game = main.Game("./maps/"+x)
         game.run()
 
@@ -148,9 +166,10 @@ class Menu:
 
             #rozmiary
             window_width = 250
-            window_height = 50
+            window_height = 100
 
             root2.title("No maps")
+            root2.configure(background='black')
 
             screen_width = root2.winfo_screenwidth()
             screen_height = root2.winfo_screenheight()
@@ -161,9 +180,10 @@ class Menu:
             root2.geometry(f'{window_width}x{window_height}+{centerX}+{centerY}')
 
 
+
             #widgety
-            ttk.Label(root2, text='No maps with this level!').pack()
-            ttk.Button(root2, text='OK!', command=root2.destroy).pack()
+            ttk.Label(root2, text='No maps with this level!', background="yellow").place(x=50,y=10)
+            ttk.Button(root2, text='OK!', command=root2.destroy).place(x=80,y=40)
         else:
             #losowo wybieram mape
             x=random.choice(generator)
@@ -290,9 +310,11 @@ class Menu:
 
             #rozmiary
             window_width = 500
-            window_height = 500
+            window_height = 600
 
             root2.title("All maps")
+
+            root2.configure(border=1, highlightbackground="yellow", highlightthickness=10, relief="sunken", background="black")
 
             screen_width = root2.winfo_screenwidth()
             screen_height = root2.winfo_screenheight()
@@ -304,10 +326,15 @@ class Menu:
             
  
             # create listbox object
-            listbox = tk.Listbox(root2, height = 10,
+            listbox = tk.Listbox(root2, height = 7,
                   width = 300,
                   font = "Helvetica",
-                  fg = "black")
+                  fg = "white",
+                  highlightbackground="yellow",
+                  selectforeground="black",
+                  selectbackground="yellow",
+                  background="black")
+            
            
  
             i=1
@@ -318,26 +345,33 @@ class Menu:
             # pack the widgets
             listbox.pack()
 
-            
+            # #Create style object
+            # sto = ttk.Style()
 
-            tk.Button(root2, text="Sort by name", command=sortNames).pack()
-            tk.Button(root2, text="Sort descending by level", command=sortDescLevel).pack()
-            tk.Button(root2, text="Sort ascending by level", command=sortAscLevel).pack()
-            tk.Button(root2, text="Sort descending by number of games", command=sortDscGames).pack()
-            tk.Button(root2, text="Sort ascending by number of games", command=sortAscGames).pack()
-            inputtxt = tk.Text(root2, height = 1, width = 30)   
-            inputtxt.pack()
+            # #configure style
+            # sto.configure('W.TButton', font= ('Arial', 10, 'underline'),
+            # foreground='Green')
+
+
+
+            tk.Button(root2, text="Sort by name", command=sortNames, relief="flat", background="black", foreground="yellow").place(x=170, y=150)
+            tk.Button(root2, text="Sort descending by level", command=sortDescLevel, relief="flat", background="black", foreground="yellow").place(x=50, y=200)
+            tk.Button(root2, text="Sort ascending by level", command=sortAscLevel, relief="flat", background="black", foreground="yellow").place(x=250,y=200)
+            tk.Button(root2, text="Sort descending by number of games", command=sortDscGames, relief="flat", background="black", foreground="yellow").place(x=110, y=250)
+            tk.Button(root2, text="Sort ascending by number of games", command=sortAscGames, relief="flat", background="black", foreground="yellow").place(x=115, y=300)
+            inputtxt = tk.Text(root2, height = 1, width = 30, background="lightgrey")   
+            inputtxt.place(x=120, y=350)
                 
-            printButton = tk.Button(root2, text = "Find", command = find)
-            printButton.pack()
+            printButton = tk.Button(root2, text = "Find", command = find, relief="flat", background="black", foreground="yellow")
+            printButton.place(x=210, y=380)
 
-            inputtxtLevel = tk.Text(root2, height = 1, width = 10)   
-            inputtxtLevel.pack()
+            inputtxtLevel = tk.Text(root2, height = 1, width = 10, background="lightgrey")   
+            inputtxtLevel.place(x=190, y=430)
                 
-            printButtonLevel = tk.Button(root2, text = "Find level", command = findlevel)
-            printButtonLevel.pack()
+            printButtonLevel = tk.Button(root2, text = "Find level", command = findlevel, relief="flat", background="black", foreground="yellow")
+            printButtonLevel.place(x=190, y=460)
 
-            tk.Button(root2, text="Play on chosen map", command=chosen).pack()
+            tk.Button(root2, text="Play on chosen map", command=chosen, relief="flat", background="black", foreground="yellow").place(x=160, y=510)
             
             root2.mainloop()
 
@@ -362,6 +396,8 @@ class Menu:
         window_width = 700
         window_height = 600
 
+        self.subroot.configure(background='black')
+
         screen_width = self.subroot.winfo_screenwidth()
         screen_height = self.subroot.winfo_screenheight()
 
@@ -373,30 +409,125 @@ class Menu:
         #mozliwosc zmiany rozmiaru
         self.subroot.resizable(True, True)
 
+        #style
+        style = ttk.Style()
+        style.configure("BW.TLabel", background="black")
+
         #widgety
-        ttk.Label(self.subroot, text='Play Pac-Man!').pack()
-        ttk.Button(self.subroot, text='Play on random map', command=self.randomMap).pack()
-        ttk.Label(self.subroot, text="Set the difficulty:").pack()
+        randomMap=tk.PhotoImage(file="graphics/pngFiles/writing/randomMap.png")
+        playPacMan=tk.PhotoImage(file="graphics/pngFiles/writing/playpacMan.png")
+        ttk.Label(self.subroot, image=playPacMan, style="BW.TLabel").place(x=50, y=50)
+        ttk.Button(self.subroot, image=randomMap, command=self.randomMap,style="BW.TLabel").place(x=200,y=150)
+        setDifficulty=tk.PhotoImage(file="graphics/pngFiles/writing/setDifficulty.png")
+        ttk.Label(self.subroot, image=setDifficulty, style="BW.TLabel").place(x=175, y=250)
         self.difficulty = tk.DoubleVar()
+        style=ttk.Style()
+        style.configure("TScale", background="black", troughcolor="yellow")
         slider = ttk.Scale(
                                 self.subroot,
                                 from_=1,
                                 to=5,
                                 orient='horizontal', 
                                 variable=self.difficulty,
-                                command=self.updateSlider
+                                command=self.updateSlider,\
+                                style="TScale"
                         )
-        slider.pack()
-        self.difficultyLabel = ttk.Label(self.subroot, text="Current difficulty: "+str(self.difficulty_to_save))
-        self.difficultyLabel.pack()
-        ttk.Button(self.subroot, text='Choose the level', command=self.levelMap).pack()
-
-        ttk.Button(self.subroot, text='Choose the map', command=self.specificMap).pack()
+        slider.place(x=300, y=290)
+        style = ttk.Style()
+        style.configure("BW.TLabel1", background="black")
+        self.difficultyLabel = ttk.Label(self.subroot, text="Current difficulty: "+str(self.difficulty_to_save), background="yellow")
+        self.difficultyLabel.place(x=290, y=320)
+        chooseTheLevel=tk.PhotoImage(file="graphics/pngFiles/writing/chooseTheLevel.png")
+        ttk.Button(self.subroot, image=chooseTheLevel, command=self.levelMap, style="BW.TLabel").place(x=180, y=350)
+        chooseTheMap=tk.PhotoImage(file="graphics/pngFiles/writing/chooseTheMap.png")
+        ttk.Button(self.subroot, image=chooseTheMap, command=self.specificMap, style="BW.TLabel").place(x=200, y=450)
 
 
         self.subroot.mainloop()
 
-    
+
+    def statistics(self):
+        
+        #statystyki
+        stats = np.array([])
+        with open("./generalStats.npy", 'rb') as f:
+            stats = np.load(f)
+            f.close()
+
+        localStats = np.array([])
+        with open("./mapStats.npy", 'rb') as f:
+            localStats=np.load(f)
+            f.close()
+        
+        #tworze okno
+        root2 = tk.Tk()
+
+        #rozmiary
+        window_width = 300
+        window_height = 200
+
+        root2.title("Statistics")
+
+        screen_width = root2.winfo_screenwidth()
+        screen_height = root2.winfo_screenheight()
+
+        centerX = int(screen_width/2 - window_width/2)
+        centerY = int(screen_height/2 - window_height/2)
+
+        root2.geometry(f'{window_width}x{window_height}+{centerX}+{centerY}')
+        root2.configure(background='black')
+
+
+        mostPopular=''
+        numberOfGames=0
+        for stat in localStats:
+            if numberOfGames<int(stat[1]):
+                numberOfGames=int(stat[1])
+                mostPopular=stat[0]
+
+        mostPopularLevel=None
+        levels=[0,0,0,0,0]
+        gamesOnLevel=0
+
+        onlyfiles = [f for f in listdir("./maps") if isfile(join("./maps", f))]
+        for map in onlyfiles:
+            currentStats=self.loadData("maps/"+map)
+            for stat in localStats:
+                if stat[0] == map:
+                    levels[int(currentStats[0])-1]+=int(stat[1])
+
+        for i in range(len(levels)):
+            if gamesOnLevel<levels[i]:
+                gamesOnLevel=levels[i]
+                mostPopularLevel=i+1
+
+
+        for stat in localStats:
+            if numberOfGames<int(stat[1]):
+                numberOfGames=int(stat[1])
+                mostPopular=stat[0]
+
+        ttk.Label(root2, text='Game time: ' + str(round(stats[0],2))+ 's', foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='Number of games: ' + str(int(stats[1])), foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='Average number of points: ' + str(int(stats[2])), foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='Number of kills by Clyde: ' + str(int(stats[3])), foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='Number of kills by Blinky: ' + str(int(stats[4])), foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='Number of kills by Inky: ' + str(int(stats[5])), foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='Number of kills by Pinky: ' + str(int(stats[6])), foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='The most popular map: ' + mostPopular, foreground='yellow', background="black").pack()
+        ttk.Label(root2, text='The most popular level: ' + str(mostPopularLevel), foreground='yellow', background="black").pack()
+
+
+
+
+
+            
+ 
+          
+        root2.mainloop()
+
+
+
 
 menu = Menu()
 

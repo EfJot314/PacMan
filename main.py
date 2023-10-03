@@ -9,6 +9,8 @@ from interactive import PacMan
 from interactive import Clyde, Blinky, Inky, Pinky
 import tkinter as tk
 
+
+
 # Define colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -19,6 +21,9 @@ YELLOW_LIGHT = (255, 255, 102)
 YELLOW = (255, 255, 0)
 GREY = (211, 211, 211)
 ORANGE = (255, 69, 0)
+PINK = (255, 105, 180)
+
+
 
 
 
@@ -42,6 +47,7 @@ class Game:
         #okno
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.RESIZABLE)
         pygame.display.set_caption("Pac-Man")
+        self.showTargets = False
 
         self.calculateScreen()
 
@@ -66,6 +72,9 @@ class Game:
         #duszki
         self.ghostRespawnArea = []
 
+        #duszki ktore zabily 
+        self.killers=[]
+
         #pobieram dane i je przypisuje do odpowiednich zmiennych
         self.boardTab = np.zeros((self.nX, self.nY))
         self.loadData(path)
@@ -76,7 +85,6 @@ class Game:
         self.makeGraph()
 
         self.findPathForGhosts()
-
 
         #umiejscowanie duszkow
         self.ghosts = []
@@ -91,8 +99,17 @@ class Game:
         # zegar
         self.counter = 1
         self.clock = pygame.time.Clock()
+        self.startTime = time.time()
+
+        #pause
+        self.pause=False
+
+        #mysz
+        self.mouse_is_pressed = False
+
 
     def makeGraph(self):
+        self.respawnOutput = []
         self.tunels = []
         self.graph = [[[] for j in range(self.nY)] for i in range(self.nX)]
         for i in range(self.nX):
@@ -156,18 +173,27 @@ class Game:
                             self.graph[i][j].append((i,j-1))
                 #obsluga respawnu duszkow
                 elif self.boardTab[i][j] == 0:
+                    #zagniezdzony if dodaje dana pozycje do listy wyjsc z respawnu
                     #lewo
                     if self.boardTab[i-1][j] != 1:
                         self.graph[i][j].append((i-1,j))
+                        if self.boardTab[i-1][j] != 0:
+                            self.respawnOutput.append((i-1, j))
                     #prawo
                     if self.boardTab[i+1][j] != 1: 
                         self.graph[i][j].append((i+1,j))
+                        if self.boardTab[i+1][j] != 0:
+                            self.respawnOutput.append((i+1, j))
                     #gora
                     if self.boardTab[i][j-1] != 1:
                         self.graph[i][j].append((i,j-1))
+                        if self.boardTab[i][j-1] != 0:
+                            self.respawnOutput.append((i, j-1))
                     #dol
                     if self.boardTab[i][j+1] != 1:
                         self.graph[i][j].append((i,j+1))
+                        if self.boardTab[i][j+1] != 0:
+                            self.respawnOutput.append((i, j+1))
 
     def findPathForGhosts(self):
         for startPosition in self.ghostRespawnArea:
@@ -274,6 +300,9 @@ class Game:
         self.endS = pygame.image.load('./graphics/pngFiles/walls/koncowka3.png')
         self.endW = pygame.image.load('./graphics/pngFiles/walls/koncowka4.png')
 
+        #rondo
+        self.roundabout = pygame.image.load('./graphics/pngFiles/walls/rondo.png')
+
     def scaleImages(self):
         #obrazki pacmana i duszkow
         self.player.scaleImages(self.unit) 
@@ -316,6 +345,9 @@ class Game:
         self.endE = pygame.transform.scale(self.endE, (self.unit, self.unit))
         self.endS = pygame.transform.scale(self.endS, (self.unit, self.unit))
         self.endW = pygame.transform.scale(self.endW, (self.unit, self.unit))
+
+        #rondo
+        self.roundabout = pygame.transform.scale(self.roundabout, (self.unit, self.unit))
 
     def drawWall(self, x, y):
         #lista zawierajaca kierunki rozbudowy muru
@@ -369,7 +401,10 @@ class Game:
             self.screen.blit(self.endS, (self.dx+x*self.unit,self.dy+y*self.unit))
         elif directionsTab[1]:
             self.screen.blit(self.endW, (self.dx+x*self.unit,self.dy+y*self.unit))
-        
+        #jak nie ma sasiadow to rondo
+        else:
+            self.screen.blit(self.roundabout, (self.dx+x*self.unit,self.dy+y*self.unit))
+            
     def draw(self):
         #wypelnianie ekranu kolorem
         self.screen.fill(BLACK)
@@ -419,6 +454,13 @@ class Game:
         pygame.draw.rect(self.screen, BLACK, (0, 0, self.screen_width, self.dy))
         pygame.draw.rect(self.screen, BLACK, (0, self.dy+self.nY*self.unit, self.screen_width, self.dy))
 
+        #targety
+        if self.showTargets and not canBeEaten:
+            #nie rysuje targetow gdy moga byc jedzone, bo wtedy po prostu duszki poruszaja sie losowo
+            for ghost in self.ghosts:
+                pygame.draw.circle(self.screen, ghost.color, (self.dx+ghost.targetX*self.unit+self.unit/2, self.dy+ghost.targetY*self.unit+self.unit/2), self.unit/4)
+
+
         #INTERFEJS
         #hp
         hpSize = 2*self.unit
@@ -435,6 +477,18 @@ class Game:
         textRect.center = (self.screen_width/2, self.unit*2)
         self.screen.blit(scoreText, textRect)
 
+
+        #dodawanie przycisku pause
+        pygame.draw.rect(self.screen,YELLOW,((self.screen_width-130),30,100,30),0,10)
+        pygame.draw.rect(self.screen,BLACK,((self.screen_width-130),30,100,30),1,10)
+        
+        font1=pygame.font.Font('freesansbold.ttf', 20)
+
+        save=font1.render('PAUSE', True, BLACK, YELLOW)
+        self.screen.blit(save,((self.screen_width-110), 35))
+
+
+
     def checkWinOrDefeat(self):
         #przegrana
         if self.player.hp <= 0:
@@ -442,10 +496,11 @@ class Game:
 
             #tworze okno
             root2 = tk.Tk()
+            root2.configure(border=1, highlightbackground="yellow", highlightthickness=10, relief="sunken", background="black")
 
             #rozmiary
             window_width = 200
-            window_height = 50
+            window_height = 100
 
             root2.title("Game results")
 
@@ -457,17 +512,17 @@ class Game:
 
             root2.geometry(f'{window_width}x{window_height}+{centerX}+{centerY}')
 
-            tk.Button(root2, text='Game over', command=root2.destroy).pack()
+            tk.Button(root2, text='You lost', command=root2.destroy, relief="flat", background="black", foreground="yellow").place(x=45, y=20)
 
         #wygrana
         if self.player.dotScore == self.dotScore:
             self.activeGame = False
             #tworze okno
             root2 = tk.Tk()
-
+            root2.configure(border=1, highlightbackground="yellow", highlightthickness=10, relief="sunken", background="black")
             #rozmiary
             window_width = 200
-            window_height = 50
+            window_height = 100
 
             root2.title("End of game")
 
@@ -479,49 +534,82 @@ class Game:
 
             root2.geometry(f'{window_width}x{window_height}+{centerX}+{centerY}')
 
-            tk.Button(root2, text='You win!', command=root2.destroy).pack()
+            tk.Button(root2, text='You win!', command=root2.destroy, relief="flat", background="black", foreground="yellow").place(x=45, y=20)
 
-    def ghostsAI(self, ghost):
-        #pobieram aktualna pozycje
+    def ghostsAI(self, ghost, canBeEaten):
+        #zbieram dane o polozeniu duszka
         xp = ghost.x
         yp = ghost.y
 
-        #pobieram sasiadow aktualnego pola na ktorym jest duszek
+        #sprawdzam czy nie jestem w tunelu
+        if self.boardTab[xp][yp] == 5:
+            return
+
+        #szukam targetow i ew zmiany modow
+        ghost.setTarget(self.player, self.ghosts, self.nX, self.nY)
+        
+        #jesli jestem w respawnie to musze z niego wyjsc, wiec zmieniam target
+        if (xp, yp) in self.ghostRespawnArea:
+            output = random.choice(self.respawnOutput)
+            ghost.targetX = output[0]
+            ghost.targetY = output[1]
+
+        #tworze liste kierunkow w które moge sie ruszyc
+        directions = []
         neighbours = self.graph[xp][yp]
+        if (xp, yp-1) in neighbours and ghost.direction != Direction.SOUTH:
+            directions.append(Direction.NORTH)
+        if (xp, yp+1) in neighbours and ghost.direction != Direction.NORTH:
+            directions.append(Direction.SOUTH)
+        if (xp+1, yp) in neighbours and ghost.direction != Direction.WEST:
+            directions.append(Direction.EAST)
+        if (xp-1, yp) in neighbours and ghost.direction != Direction.EAST:
+            directions.append(Direction.WEST)
 
-        #INPLEMENTACJA TYMCZASOWA
-        #zeby duszki nie chodzily gora-dol, prawo-lewo to zmniejszam szanse na zmiane kierunku jak jest tylko 2 sasiadow
-        if len(neighbours) == 2 and random.randint(0, 5) > 3 and self.boardTab[xp][yp] != 5:
-            #sprawiam ze nie beda robily niedozwolonych rzeczy
-            if ghost.direction == Direction.NORTH and (xp, yp-1) not in neighbours:
-                if yp != 0:
-                    ghost.direction = None
-            elif ghost.direction == Direction.SOUTH and (xp, yp+1) not in neighbours:
-                if yp != self.nY-1:
-                    ghost.direction = None
-            elif ghost.direction == Direction.EAST and (xp+1, yp) not in neighbours:
-                if xp != self.nX-1:
-                    ghost.direction = None
-            elif ghost.direction == Direction.WEST and (xp-1, yp) not in neighbours:
-                if xp != 0:
-                    ghost.direction = None
-        #tunel
-        elif self.boardTab[xp][yp] != 5:
-            #szukam gdzie pojde
-            nextPosition = random.choice(neighbours)
+        #jesli zbior kierunkow jest pusty to dodaje kierunek z ktorego przyszedlem
+        if len(directions) == 0:
+            if ghost.direction == Direction.NORTH:
+                directions.append(Direction.SOUTH)
+            elif ghost.direction == Direction.EAST:
+                directions.append(Direction.WEST)
+            elif ghost.direction == Direction.SOUTH:
+                directions.append(Direction.NORTH)
+            elif ghost.direction == Direction.WEST:
+                directions.append(Direction.EAST)
 
-            #teraz szukam jaki musi byc kierunek by tam poszedl
-            if nextPosition[0] == xp:
-                if nextPosition[1] == yp-1:
-                    ghost.direction = Direction.NORTH
-                else:
-                    ghost.direction = Direction.SOUTH
-            else:
-                if nextPosition[0] == xp-1:
-                    ghost.direction = Direction.WEST
-                else:
-                    ghost.direction = Direction.EAST
 
+        #gdy moga byc zjedzone
+        if canBeEaten:
+            #losuje kierunek na dalszy ruch
+            ghost.direction = random.choice(directions)
+
+        #gdy to one moga zabic
+        else:
+            #szukam kierunku, ktory da mi najmniejsza odlegosc od targetu
+            minD = float('inf')
+            bestDirection = None
+            for direction in directions:
+                dx, dy = 0, 0
+                if direction == Direction.NORTH:
+                    dx = ghost.x - ghost.targetX
+                    dy = ghost.y-1 - ghost.targetY
+                elif direction == Direction.EAST:
+                    dx = ghost.x+1 - ghost.targetX
+                    dy = ghost.y - ghost.targetY
+                elif direction == Direction.SOUTH:
+                    dx = ghost.x - ghost.targetX
+                    dy = ghost.y+1 - ghost.targetY
+                elif direction == Direction.WEST:
+                    dx = ghost.x-1 - ghost.targetX
+                    dy = ghost.y - ghost.targetY
+                #jesli ten kierunek jest lepszy od poprzednich to to zapisuje
+                d = dx*dx + dy*dy
+                if d < minD:
+                    minD = d
+                    bestDirection = direction
+
+            #ustawiam kierunek na najlepszy z mozliwych
+            ghost.direction = bestDirection
 
     def moveAll(self):
         #POZWOLENIE NA JEDZENIE I EWENTUALNE SPOWALNIANIE DUSZKOW
@@ -556,10 +644,12 @@ class Game:
                     self.dinnerBonus *= 2
                 else:
                     self.player.hp -= 1
+                    self.killers.append(ghost.type)
                     self.player.backToPosition(self.pacX, self.pacY)
         
 
         #ZMIANY KIERUNKU RUCHU
+        turnBack = False
         #Pac-Man
         if self.counter % self.playerMoveTime == 0:
             #potwierdzam poprzednia zmiane pozycji
@@ -583,6 +673,8 @@ class Game:
                     self.counter = 0
                 self.startDinnerTime = time.time()
                 self.dinnerBonus = 200
+                #obrot duszkow o 180 (tylko jezeli przed zjedzeniem nie byly zdatne do spozycia)
+                turnBack = True
             #wisienki
             if self.boardTab[xp][yp] == 6:
                 self.player.otherScore += 100
@@ -620,21 +712,34 @@ class Game:
                 #sprawdzam czy jestem czy nie w tunelu
                 if xp != 0:
                     self.player.direction = None
-                        
 
             #sprawdzam koniec gry
             self.checkWinOrDefeat()
 
             #tworze ew wisienki
             self.cherryService()
-        
+
+
         #Duszki
         if self.counter % ghostMoveTime == 0:
             for ghost in self.ghosts:
                 #potwierdzam poprzednia zmiane pozycji
                 ghost.confirmPosition(self.tunels, self.nX, self.nY)
+                #ewentualny obrot
+                if turnBack:
+                    if ghost.direction == Direction.NORTH:
+                        ghost.direction = Direction.SOUTH
+                    elif ghost.direction == Direction.EAST:
+                        ghost.direction = Direction.WEST
+                    elif ghost.direction == Direction.SOUTH:
+                        ghost.direction = Direction.NORTH
+                    elif ghost.direction == Direction.WEST:
+                        ghost.direction = Direction.EAST
                 #ustawiam kazdemu duszkowi kolejny kierunek
-                self.ghostsAI(ghost)
+                self.ghostsAI(ghost, canBeEaten)
+
+        
+        
                 
 
             
@@ -644,7 +749,6 @@ class Game:
         #Duszki
         for ghost in self.ghosts:
             ghost.move(ghostMoveTime)
-
 
     def cherryService(self):
         #tworze wisienke tylko jesli jeszcze jej nie ma i gracz zjadl juz co najmniej 1/4 wszytskich kropek
@@ -680,7 +784,6 @@ class Game:
                     ghost.respawn(pos[0], pos[1])
         
 
-
     def run(self):
         while self.activeGame:
             #ruszanie
@@ -689,12 +792,26 @@ class Game:
             #rysowanie
             self.draw()
 
+            #odswiezanie okna
+            pygame.display.update()
+
+            #obsluga licznika
+            self.counter += 1
+            if self.counter >= 1000:
+                self.counter = 0
+
+            #kontroluje FPS
+            self.clock.tick(self.FPS)
+
+
             #przechwytywanie zdarzen
             for event in pygame.event.get():
                 #zamykanie okna
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     # sys.exit()
+                    self.activeGame = False
+                    
 
                 #zmiana rozmiaru okna - koniecznosc przeliczenia niektorych zmiennych
                 elif event.type == pygame.WINDOWEXPOSED:
@@ -707,6 +824,9 @@ class Game:
                     #LPM
                     if event.button == 1:
                         self.mouse_is_pressed = True
+                #keyupy
+                if event.type == pygame.MOUSEBUTTONUP:
+                    self.mouse_is_pressed = False
 
                 if event.type == pygame.KEYDOWN:
                     #sterowanie Pac-Manem
@@ -718,24 +838,41 @@ class Game:
                         self.player.nextDirection = Direction.SOUTH
                     if event.key == pygame.K_a:
                         self.player.nextDirection = Direction.WEST
+                    #targety
+                    if event.key == pygame.K_t:
+                        self.showTargets = not self.showTargets
 
+                #przyciski
+                self.mousePos = pygame.mouse.get_pos()
+                x=(int)(self.mousePos[0]-(self.screen_width-130))
+                y=(int)(self.mousePos[1]-30)
+                
+                if self.mouse_is_pressed and x>0 and x<100 and y>0 and y<30:
+                    self.pause= not self.pause
+
+            while self.pause:
+                self.mouse_is_pressed=False
+                #przyciski
+                self.mousePos = pygame.mouse.get_pos()
+                x=(int)(self.mousePos[0]-(self.screen_width-130))
+                y=(int)(self.mousePos[1]-30)
+                for event in pygame.event.get():
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                    #LPM
+                        if event.button == 1:
+                            self.mouse_is_pressed = True
+                if self.mouse_is_pressed and x>0 and x<100 and y>0 and y<30:
+                    self.pause= not self.pause
+
+
+        self.endTime = time.time()
             
-            #odswiezanie okna
-            pygame.display.update()
-
-            #obsluga licznika
-            self.counter += 1
-            if self.counter >= 1000:
-                self.counter = 0
-
-            #kontroluje FPS
-            self.clock.tick(self.FPS)
-
-        
+            
         #statystyki
         stats = np.array([])
         # with open("./mapStats.npy", 'wb') as f:
         #     np.save(f, stats)
+        numGames=0
         with open("./mapStats.npy", 'rb') as f:
             #zbieranie statystyk
             stats = np.load(f)
@@ -749,6 +886,7 @@ class Game:
             #jezeli juz gralem na tej mapie to inkrementuje licznik
             exist = False
             for stat in stats:
+                numGames+=int(stat[1])
                 if stat[0] == currMapName:
                     stat[1] = int(stat[1])+1
                     exist = True
@@ -762,6 +900,63 @@ class Game:
             #zapis 
             np.save(f, stats)
             f.close()
+
+
+        #statystyki ogolne - czas gry itp
+
+        generalStats=np.array([])
+        # with open("./generalStats.npy", 'wb') as f:
+        #     np.save(f, generalStats)
+
+
+        with open("./generalStats.npy", 'rb') as f:
+        #zbieranie statystyk
+            generalStats = np.load(f)
+            newGeneralStats = list(generalStats)
+            generalStats = newGeneralStats
+            
+
+        with open("./generalStats.npy", 'wb') as f:
+
+            if(len(generalStats)==0):
+                generalStats.append((self.endTime-self.startTime))
+                generalStats.append(1)
+                generalStats.append(self.player.dotScore)
+                generalStats.append(0)
+                generalStats.append(0)
+                generalStats.append(0)
+                generalStats.append(0)
+                for name in self.killers:
+                    if name == "Clyde":
+                        generalStats[3]=int(generalStats[3])+1
+                    if name == "Blinky":
+                        generalStats[4]=int(generalStats[4])+1
+                    if name == "Inky":
+                        generalStats[5]=int(generalStats[5])+1
+                    if name == "Pinky":
+                        generalStats[6]=int(generalStats[6])+1
+
+            else:
+            #zwiekszam czas gry 
+                generalStats[0]+=(self.endTime-self.startTime)
+                generalStats[2]=(generalStats[2]*int(generalStats[1])+self.player.dotScore)/(int(generalStats[1])+1)
+                generalStats[1]=int(generalStats[1])+1
+                for name in self.killers:
+                    if name == "Clyde":
+                        generalStats[3]=int(generalStats[3])+1
+                    if name == "Blinky":
+                        generalStats[4]=int(generalStats[4])+1
+                    if name == "Inky":
+                        generalStats[5]=int(generalStats[5])+1
+                    if name == "Pinky":
+                        generalStats[6]=int(generalStats[6])+1
+
+            generalStats = np.array(generalStats)
+            
+            #zapis 
+            np.save(f, generalStats)
+            f.close()
+
         
         #wyjscie z okna
         pygame.quit()
